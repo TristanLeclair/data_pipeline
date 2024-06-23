@@ -12,6 +12,10 @@ from retry_requests import retry
 def parse():
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--locations",
+        help="JSON file that contains latitude and longitude of area we want to query",
+    )
+    parser.add_argument(
         "-log",
         "--loglevel",
         default="warning",
@@ -30,15 +34,19 @@ def setup():
     return openmeteo
 
 
-def read_location_info() -> tuple[float, float]:
-    with open("../locations.json") as f:
-        locations = json.load(f)
-        try:
-            lat = float(locations["latitude"])
-            lon = float(locations["longitude"])
-        except ValueError:
-            logging.error("Invalid JSON coordinates, must be floats")
-            exit(1)
+def read_location_info(locations_file_path) -> tuple[float, float]:
+    try:
+        with open(locations_file_path) as f:
+            locations = json.load(f)
+            try:
+                lat = float(locations["latitude"])
+                lon = float(locations["longitude"])
+            except ValueError:
+                logging.error("Invalid JSON coordinates, must be floats")
+                exit(1)
+    except FileNotFoundError:
+        logging.error(f"Invalid file path: {locations_file_path}")
+        exit(1)
 
     return lat, lon
 
@@ -73,20 +81,18 @@ def send_request_open_meteo(lat: float, lon: float):
     return response
 
 
-def main():
+def main(locations_file_path):
     global openmeteo
     openmeteo = setup()
 
-    lat, lon = read_location_info()
+    lat, lon = read_location_info(locations_file_path)
     logging.info(f"Pulling weather information from lat:{lat}, lon:{lon}")
 
     response = send_request(lat, lon)
-    print(response.json())
-
-    pass
+    print(json.dumps(response.json()))
 
 
 if __name__ == "__main__":
     options = parse()
     logging.basicConfig(level=options.loglevel.upper())
-    main()
+    main(options.locations)
