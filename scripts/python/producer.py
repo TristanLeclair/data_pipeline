@@ -33,7 +33,7 @@ def setup():
 # region Get from API
 
 
-def read_location_info(locations_file_path) -> tuple[float, float]:
+def read_location_info(locations_file_path: Path) -> tuple[float, float]:
     try:
         with open(locations_file_path) as f:
             locations = json.load(f)
@@ -114,7 +114,11 @@ def main(options: Parser):
 
 
 if __name__ == "__main__":
-    options = Parser().parse_args()
-    print(options)
-    logging.basicConfig(level=options.log_level.upper())
-    main(options)
+    try:
+        options = Parser().parse_args()
+        print(options)
+        logging.basicConfig(level=options.log_level.upper())
+        main(options)
+    except KeyboardInterrupt:
+        logging.info("Stopping by KeyboardInterrupt")
+        pass
