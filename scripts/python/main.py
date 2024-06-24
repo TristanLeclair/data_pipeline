@@ -6,6 +6,7 @@ from pathlib import Path
 
 import openmeteo_requests
 from quixstreams import Application
+from quixstreams.logging import LogLevel
 from tap import Tap
 import requests
 import requests_cache
@@ -15,12 +16,8 @@ from retry_requests import retry
 
 
 class Parser(Tap):
-    locations: (
-        Path  # JSON file that contains latitude and longitude of area we want to query
-    )
-    log_level: Literal[
-        "CRITICAL", "FATAL", "ERROR", "WARN", "WARNING", "INFO", "DEBUG", "NOTSET"
-    ] = "WARNING"  # Log level
+    locations: Path  # JSON file that contains latitude and longitude of area
+    log_level: LogLevel = "DEBUG"  # Log level
     loop: bool = False  # Loop application and keep fetching and sending to kafka
 
 
@@ -97,7 +94,7 @@ def main(options: Parser):
 
     app = Application(
         broker_address="localhost:9093",
-        loglevel="DEBUG",
+        loglevel=options.log_level,
     )
 
     # input_topic = app.topic("weather_input_topic")
