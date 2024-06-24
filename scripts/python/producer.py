@@ -146,17 +146,21 @@ class LineReader:
         return json_payload
 
 
-def select_correct_requester():
+def select_correct_requester_and_delay():
     match options.data_source:
         case "csv":
             request_data = LineReader()
+            delay = 0.5
         case "requests":
             request_data = send_request
+            delay = 60
         case "openmeteo_requests":
             request_data = send_request_open_meteo
+            delay = 60
         case _:
             request_data = LineReader()
-    return request_data
+            delay = 0.5
+    return request_data, delay
 
 
 # endregion
@@ -180,7 +184,7 @@ def main():
     # input_topic = app.topic("weather_input_topic")
     # output_topic = app.topic("weather_output_topic")
 
-    request_data = select_correct_requester()
+    request_data, delay_between_reads = select_correct_requester_and_delay()
     weather = request_data()
 
     with app.get_producer() as producer:
@@ -192,7 +196,7 @@ def main():
             logging.info("Produced. Sleeping...")
             if not options.loop:
                 break
-            time.sleep(2)
+            time.sleep(delay_between_reads)
             weather = request_data()
 
 
