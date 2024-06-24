@@ -1,7 +1,9 @@
 import json
 import logging
 import time
-from typing import Literal
+import random
+import re
+from typing import Literal, Optional
 from pathlib import Path
 
 import openmeteo_requests
@@ -19,6 +21,14 @@ class Parser(Tap):
     locations: Path  # JSON file that contains latitude and longitude of area
     log_level: LogLevel = "DEBUG"  # Log level
     loop: bool = False  # Loop application and keep fetching and sending to kafka
+    data_source: Literal["csv", "requests", "openmeteo"] = "csv"  # Source of data
+    csv_path: Optional[Path] = None  # csv path if data_source = "csv"
+
+    def process_args(self) -> None:
+        if self.data_source != "csv" and self.csv_path is not None:
+            raise ValueError("csv_path is only needed when the data_source is 'csv'")
+        if self.data_source == "csv" and self.csv_path is None:
+            raise ValueError("csv_path is only needed when the data_source is 'csv'")
 
 
 def setup():
@@ -58,26 +68,95 @@ def create_params(lat: float, lon: float):
     params = {
         "latitude": lat,
         "longitude": lon,
-        "current": ["temperature_2m", "wind_speed_10m"],
+        "current": ["temperature_2m", "relative_humidity_2m", "wind_speed_10m"],
         "forecast_days": 1,
     }
 
     return url, params
 
 
-def send_request(lat: float, lon: float):
-    url, params = create_params(lat, lon)
+def send_request():
+    url, params = create_params(latitude, longitude)
 
     response = requests.get(url, params=params)
 
     return response.json()
 
 
-def send_request_open_meteo(lat: float, lon: float):
-    url, params = create_params(lat, lon)
+def send_request_open_meteo():
+    url, params = create_params(latitude, longitude)
     responses = openmeteo.weather_api(url, params=params)
     response = responses[0]
-    return response
+    # TODO: transform data (I'm not going to use this right now, would rather work with raw data for the time being)
+    return json.loads('{"latitude": 45, "longitude": -73}')
+
+
+class LineReader:
+    def __init__(self) -> None:
+        self.line_generator = self.read_lines_from_csv()
+
+    def __call__(self):
+        try:
+            return next(self.line_generator)
+        except StopIteration:
+            return None
+
+    def is_valid_line(self, line: str):
+        pattern = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2},-?\d+\.\d+,\d+,-?\d+\.\d+$"
+        return bool(re.match(pattern, line))
+
+    def read_lines_from_csv(self):
+        assert options.data_source == "csv" and options.csv_path is not None
+
+        with open(options.csv_path, "r") as file:
+            for line in file:
+                line = line.strip()
+                if self.is_valid_line(line):
+                    yield self.clean_line(line)
+
+    def clean_line(self, line: str) -> dict:
+        """
+        Reformat csv line into
+        """
+        curr_time, temp, humidity, wind_speed = line.split(",")
+        json_payload = {
+            "latitude": latitude,
+            "longitude": longitude,
+            "generationtime_ms": random.uniform(0.03, 0.09),
+            "utc_offset_seconds": 0,
+            "timezone": "GMT",
+            "timezone_abbreviation": "GMT",
+            "elevation": 30.0,
+            "current_units": {
+                "time": "iso8601",
+                "interval": "seconds",
+                "temperature_2m": "\u00b0C",
+                "relative_humidity_2m": "%",
+                "wind_speed_10m": "km/h",
+            },
+            "current": {
+                "time": curr_time,
+                "interval": 900,
+                "temperature_2m": temp,
+                "relative_humidity_2m": humidity,
+                "wind_speed_10m": wind_speed,
+            },
+        }
+
+        return json_payload
+
+
+def select_correct_requester():
+    match options.data_source:
+        case "csv":
+            request_data = LineReader()
+        case "requests":
+            request_data = send_request
+        case "openmeteo_requests":
+            request_data = send_request_open_meteo
+        case _:
+            request_data = LineReader()
+    return request_data
 
 
 # endregion
@@ -85,12 +164,13 @@ def send_request_open_meteo(lat: float, lon: float):
 # endregion
 
 
-def main(options: Parser):
+def main():
     global openmeteo
     openmeteo = setup()
 
-    lat, lon = read_location_info(options.locations)
-    logging.info(f"Pulling weather information from lat:{lat}, lon:{lon}")
+    global latitude, longitude
+    latitude, longitude = read_location_info(options.locations)
+    logging.info(f"Pulling weather information from lat:{latitude}, lon:{longitude}")
 
     app = Application(
         broker_address="localhost:9093",
@@ -100,9 +180,11 @@ def main(options: Parser):
     # input_topic = app.topic("weather_input_topic")
     # output_topic = app.topic("weather_output_topic")
 
+    request_data = select_correct_requester()
+    weather = request_data()
+
     with app.get_producer() as producer:
-        while True:
-            weather = send_request(lat, lon)
+        while True and weather is not None:
             logging.debug(f"Got weather {json.dumps(weather)}")
             producer.produce(
                 topic="weather_input_topic", key="St-Jean", value=json.dumps(weather)
@@ -110,15 +192,17 @@ def main(options: Parser):
             logging.info("Produced. Sleeping...")
             if not options.loop:
                 break
-            time.sleep(60)
+            time.sleep(2)
+            weather = request_data()
 
 
 if __name__ == "__main__":
     try:
+        global options
         options = Parser().parse_args()
         print(options)
         logging.basicConfig(level=options.log_level.upper())
-        main(options)
+        main()
     except KeyboardInterrupt:
         logging.info("Stopping by KeyboardInterrupt")
         pass
