@@ -5,6 +5,7 @@ from typing import Literal
 from pathlib import Path
 
 import openmeteo_requests
+from quixstreams import Application
 from tap import Tap
 import requests
 import requests_cache
@@ -94,8 +95,25 @@ def main(options: Parser):
     lat, lon = read_location_info(options.locations)
     logging.info(f"Pulling weather information from lat:{lat}, lon:{lon}")
 
-    response = send_request(lat, lon)
-    print(json.dumps(response.json()))
+    app = Application(
+        broker_address="localhost:9093",
+        loglevel="DEBUG",
+    )
+
+    # input_topic = app.topic("weather_input_topic")
+    # output_topic = app.topic("weather_output_topic")
+
+    with app.get_producer() as producer:
+        while True:
+            weather = send_request(lat, lon)
+            logging.debug(f"Got weather {json.dumps(weather)}")
+            producer.produce(
+                topic="weather_input_topic", key="St-Jean", value=json.dumps(weather)
+            )
+            logging.info("Produced. Sleeping...")
+            if not options.loop:
+                break
+            time.sleep(60)
 
 
 if __name__ == "__main__":
