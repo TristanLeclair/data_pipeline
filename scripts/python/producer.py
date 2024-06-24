@@ -18,11 +18,18 @@ from retry_requests import retry
 
 
 class Parser(Tap):
+    """
+    Python script that streams weather api information from open-meteo.com into Kafka
+    """
+
     locations: Path  # JSON file that contains latitude and longitude of area
     log_level: LogLevel = "DEBUG"  # Log level
     loop: bool = False  # Loop application and keep fetching and sending to kafka
     data_source: Literal["csv", "requests", "openmeteo"] = "csv"  # Source of data
     csv_path: Optional[Path] = None  # csv path if data_source = "csv"
+    kafka_topic: str = "weather_input_topic"  # kafka topic to stream to
+    kafka_key: str = "St-Jean"  # key to give kafka data
+    kafka_broker_address: str = "localhost:9093"  # kafka broker address
 
     def process_args(self) -> None:
         if self.data_source != "csv" and self.csv_path is not None:
@@ -177,7 +184,7 @@ def main():
     logging.info(f"Pulling weather information from lat:{latitude}, lon:{longitude}")
 
     app = Application(
-        broker_address="localhost:9093",
+        broker_address=options.kafka_broker_address,
         loglevel=options.log_level,
     )
 
@@ -191,7 +198,9 @@ def main():
         while True and weather is not None:
             logging.debug(f"Got weather {json.dumps(weather)}")
             producer.produce(
-                topic="weather_input_topic", key="St-Jean", value=json.dumps(weather)
+                topic=options.kafka_topic,
+                key=options.kafka_key,
+                value=json.dumps(weather),
             )
             logging.info("Produced. Sleeping...")
             if not options.loop:
