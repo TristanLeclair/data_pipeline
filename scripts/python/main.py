@@ -1,29 +1,26 @@
-from typing import Literal
-import argparse
-import openmeteo_requests
-
-import logging
 import json
+import logging
+import time
+from typing import Literal
+from pathlib import Path
+
+import openmeteo_requests
+from tap import Tap
 import requests
 import requests_cache
 from retry_requests import retry
 
+# region Setup
 
-def parse():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--locations",
-        help="JSON file that contains latitude and longitude of area we want to query",
+
+class Parser(Tap):
+    locations: (
+        Path  # JSON file that contains latitude and longitude of area we want to query
     )
-    parser.add_argument(
-        "-log",
-        "--loglevel",
-        default="warning",
-        help=("Provide logging level. " "Example --log debug', default='warning'"),
-        choices=logging._nameToLevel.keys(),
-    )
-    options = parser.parse_args()
-    return options
+    log_level: Literal[
+        "CRITICAL", "FATAL", "ERROR", "WARN", "WARNING", "INFO", "DEBUG", "NOTSET"
+    ] = "WARNING"  # Log level
+    loop: bool = False  # Loop application and keep fetching and sending to kafka
 
 
 def setup():
@@ -32,6 +29,10 @@ def setup():
     openmeteo = openmeteo_requests.Client(session=retry_session)
 
     return openmeteo
+
+
+# endregion
+# region Get from API
 
 
 def read_location_info(locations_file_path) -> tuple[float, float]:
@@ -71,7 +72,7 @@ def send_request(lat: float, lon: float):
 
     response = requests.get(url, params=params)
 
-    return response
+    return response.json()
 
 
 def send_request_open_meteo(lat: float, lon: float):
@@ -81,11 +82,16 @@ def send_request_open_meteo(lat: float, lon: float):
     return response
 
 
-def main(locations_file_path):
+# endregion
+# region Stream data
+# endregion
+
+
+def main(options: Parser):
     global openmeteo
     openmeteo = setup()
 
-    lat, lon = read_location_info(locations_file_path)
+    lat, lon = read_location_info(options.locations)
     logging.info(f"Pulling weather information from lat:{lat}, lon:{lon}")
 
     response = send_request(lat, lon)
@@ -93,6 +99,7 @@ def main(locations_file_path):
 
 
 if __name__ == "__main__":
-    options = parse()
-    logging.basicConfig(level=options.loglevel.upper())
-    main(options.locations)
+    options = Parser().parse_args()
+    print(options)
+    logging.basicConfig(level=options.log_level.upper())
+    main(options)

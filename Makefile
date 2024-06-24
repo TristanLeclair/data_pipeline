@@ -10,4 +10,4 @@ start-producer:
 
 # Run fetch once, can pipe to jq for prettier output
 run-fetch-once:
-	@python3 scripts/python/main.py --locations locations.json
+	@python3 scripts/python/main.py --locations locations.json --log_level DEBUG
