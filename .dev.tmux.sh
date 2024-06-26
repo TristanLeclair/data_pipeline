@@ -10,12 +10,14 @@ then
   tmux new-window -t "$directory_basename":3 -n Tests
   tmux new-window -t "$directory_basename":4 -n Zsh
 
+  tmux split-pane -t "$directory_basename":1 -v -l '20%'
   tmux split-pane -t "$directory_basename":3 -v
 
   sleep 2
 
 
-  tmux send-keys -t "$directory_basename":1 "stenv" C-m
+  tmux send-keys -t "$directory_basename":1.1 "stenv" C-m
+  tmux send-keys -t "$directory_basename":1.2 "stenv" C-m
   tmux send-keys -t "$directory_basename":2 "stenv" C-m
   tmux send-keys -t "$directory_basename":3.1 "stenv" C-m
   tmux send-keys -t "$directory_basename":3.2 "stenv" C-m
