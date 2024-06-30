@@ -9,8 +9,8 @@ services:
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
     container_name: zookeeper
-    # networks:
-    #     - kafka-net
+    networks:
+      - kafka-net
 
   kafka:
     restart: always
@@ -19,8 +19,8 @@ services:
       - "9093:9093"
     volumes:
       - "kafka-volume:/bitnami"
-    # networks:
-    #   - kafka-net
+    networks:
+      - kafka-net
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -36,6 +36,7 @@ services:
 volumes:
   kafka-volume:
   zookeeper-volume:
-# networks:
-#   kafka-net:
-#     driver: bridge
+
+networks:
+  kafka-net:
+    driver: bridge
