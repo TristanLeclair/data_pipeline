@@ -1,5 +1,6 @@
 import logging
 import json
+from uuid import uuid4
 
 from quixstreams import Application
 from quixstreams.kafka.consumer import AutoOffsetReset
@@ -12,9 +13,10 @@ from tap import Tap
 class Parser(Tap):
     log_level: LogLevel = "DEBUG"  # Log level
     kafka_broker_address: str = "localhost:9093"  # address of kafka server
-    kafka_consumer_group: str = "weather_reader"
-    """Consumer group for Kafka, will generate a random uuid everytime if left empty"""
+    kafka_consumer_group: str = "weather_transformer"
+    # """Consumer group for Kafka, will generate a random uuid everytime if left empty"""
     kafka_input_topic: str = "weather_input_topic"  # Kafka topic to subscribe to
+    kafka_output_topic: str = "weather_i18n"
     kafka_offset_reset: AutoOffsetReset = "earliest"  # Kafka offset reset option
 
 
@@ -29,22 +31,28 @@ def main():
         auto_offset_reset=options.kafka_offset_reset,
     )
 
-    with app.get_consumer() as consumer:
-        consumer.subscribe([options.kafka_input_topic])
+    input_topic = app.topic(options.kafka_input_topic)
+    output_topic = app.topic(options.kafka_output_topic)
 
-        while True:
-            msg = consumer.poll(1)
+    def transform(msg):
+        current = msg["current"]
+        celcius = float(current["temperature_2m"])
+        fahrenheit = (celcius * 9 / 5) + 32
+        kelvin = celcius + 273.15
+        new_msg = {
+            "celcius": celcius,
+            "fahrenheit": round(fahrenheit, 2),
+            "kelvin": round(kelvin, 2),
+        }
 
-            if msg is None:
-                print("Waiting...")
-            elif msg.error() is not None:
-                raise Exception(msg.error())
-            else:
-                key = msg.key().decode("utf8")
-                value = json.loads(msg.value())
-                offset = msg.offset()
+        logging.debug(f"Returning: {new_msg}")
+        return new_msg
 
-                print(f"{offset} {key} {value}")
+    sdf = app.dataframe(input_topic)
+    sdf = sdf.apply(transform)
+    sdf = sdf.to_topic(output_topic)
+
+    app.run(sdf)
 
 
 if __name__ == "__main__":
