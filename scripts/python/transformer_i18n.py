@@ -1,6 +1,4 @@
 import logging
-import json
-from uuid import uuid4
 
 from quixstreams import Application
 from quixstreams.kafka.consumer import AutoOffsetReset
