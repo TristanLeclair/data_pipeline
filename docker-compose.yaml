@@ -33,6 +33,19 @@ services:
       - zookeeper
     container_name: kafka
 
+  python_producer:
+    build: ./producer/
+    depends_on:
+      - kafka
+    container_name: producer
+    networks:
+      - kafka-net
+    develop:
+      watch:
+        - path: ./producer/
+          action: sync
+          target: /app
+
 volumes:
   kafka-volume:
   zookeeper-volume:
