@@ -95,7 +95,8 @@ def send_request_open_meteo():
     url, params = create_params(latitude, longitude)
     responses = openmeteo.weather_api(url, params=params)
     response = responses[0]
-    # TODO: transform data (I'm not going to use this right now, would rather work with raw data for the time being)
+    # TODO: transform data (I'm not going to use this right now,
+    # would rather work with raw data for the time being)
     return json.loads('{"latitude": 45, "longitude": -73}')
 
 
@@ -145,7 +146,7 @@ class LineReader:
                 "wind_speed_10m": "km/h",
             },
             "current": {
-                "time": datetime.datetime.now(),
+                "time": str(datetime.datetime.now()),
                 "interval": 900,
                 "temperature_2m": temp,
                 "relative_humidity_2m": humidity,
