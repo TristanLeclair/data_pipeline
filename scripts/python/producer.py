@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 import time
@@ -123,9 +124,11 @@ class LineReader:
 
     def clean_line(self, line: str) -> dict:
         """
-        Reformat csv line into
+        Reformat csv line into a normal API response. See data/sample_data.json
+
+        Changes time to current time instead to match with Kafka's timestamp, which will be used later
         """
-        curr_time, temp, humidity, wind_speed = line.split(",")
+        _, temp, humidity, wind_speed = line.split(",")
         json_payload = {
             "latitude": latitude,
             "longitude": longitude,
@@ -142,7 +145,7 @@ class LineReader:
                 "wind_speed_10m": "km/h",
             },
             "current": {
-                "time": curr_time,
+                "time": datetime.datetime.now(),
                 "interval": 900,
                 "temperature_2m": temp,
                 "relative_humidity_2m": humidity,

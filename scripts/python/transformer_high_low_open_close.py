@@ -88,7 +88,11 @@ def main():
     output_topic = app.topic(options.kafka_output_topic)
 
     sdf = app.dataframe(input_topic)
+
+    # Uses Kafka's timestamp, not timestamp in data
     sdf = sdf.tumbling_window(duration_ms=timedelta(minutes=5))
+
+    # Reduce to create high low open close every 5 minutes
     sdf = sdf.reduce(reducer=reducer_func, initializer=initializer_func)
     sdf = sdf.final()
     sdf = sdf.update(lambda msg: logging.debug(f"Got {msg}"))
