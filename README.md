@@ -10,7 +10,7 @@ The data comes from [open-meteo API](https://open-meteo.com/). I got a large his
 
 ### Producers
 
-The producer service gathers data from [open-meteo API](https://open-meteo.com/) to feed into Kafka.
+[producer.py](./producer/producer.py): service gathers data from [open-meteo API](https://open-meteo.com/) to feed into Kafka.
 
 > **_NOTE:_** I've left in the normal streaming code that calls the [open-meteo API](https://open-meteo.com/) but have replaced the default "fetcher" with a json reader that simulates receiving real-time data by pulling from a csv file to save on API calls.
 
@@ -20,15 +20,15 @@ Services that perform specific data transformations.
 
 #### Transformer Average
 
-transformer_average.py: Script to calculate average temperature every minute.
+[ transformer_average.py ](./transformer_average/transformer_average.py): Script to calculate average temperature every minute.
 
 #### Transformer High Low Open Close
 
-transformer_high_low_open_close.py: Script to calculate high, low, open, and close values of temperature, humidity and wind speeds every 5 minutes.
+[ transformer_high_low_open_close.py ](./transformer_high_low_open_close/transformer_high_low_open_close.py): Script to calculate high, low, open, and close values of temperature, humidity and wind speeds every 5 minutes.
 
 #### Transformer i18n
 
-transformer_i18n.py: Script for internationalization of temperature data.
+[ transformer_i18n.py ](./transformer_i18n/transformer_i18n.py): Script for internationalization of temperature data.
 
 ### Docker compose
 
