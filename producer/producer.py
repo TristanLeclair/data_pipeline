@@ -148,9 +148,9 @@ class LineReader:
             "current": {
                 "time": str(datetime.datetime.now()),
                 "interval": 900,
-                "temperature_2m": temp,
-                "relative_humidity_2m": humidity,
-                "wind_speed_10m": wind_speed,
+                "temperature_2m": float(temp),
+                "relative_humidity_2m": float(humidity),
+                "wind_speed_10m": float(wind_speed),
             },
         }
 
