@@ -1,4 +1,5 @@
 import logging
+from uuid import uuid4
 
 from quixstreams import Application
 from quixstreams.kafka.consumer import AutoOffsetReset
@@ -16,6 +17,12 @@ class Parser(Tap):
     kafka_input_topic: str = "weather_input_topic"  # Kafka topic to subscribe to
     kafka_output_topic: str = "weather_i18n"
     kafka_offset_reset: AutoOffsetReset = "earliest"  # Kafka offset reset option
+    dev: bool = False  # Will override to dev defaults (random consumer group, DEBUG)
+
+    def process_args(self) -> None:
+        if self.dev:
+            self.kafka_consumer_group = str(uuid4())
+            self.log_level = "DEBUG"
 
 
 # endregion

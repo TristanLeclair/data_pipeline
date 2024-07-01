@@ -14,12 +14,17 @@ from tap import Tap
 class Parser(Tap):
     log_level: LogLevel = "DEBUG"  # Log level
     kafka_broker_address: str = "localhost:9093"  # address of kafka server
-    # kafka_consumer_group: str = "weather_high_low_open_close"
-    kafka_consumer_group: str = str(uuid4())
+    kafka_consumer_group: str = "weather_high_low_open_close"
     # """Consumer group for Kafka, will generate a random uuid everytime if left empty"""
     kafka_input_topic: str = "weather_input_topic"  # Kafka topic to subscribe to
     kafka_output_topic: str = "weather_high_low_open_close"
     kafka_offset_reset: AutoOffsetReset = "earliest"  # Kafka offset reset option
+    dev: bool = False  # Will override to dev defaults (random consumer group, DEBUG)
+
+    def process_args(self) -> None:
+        if self.dev:
+            self.kafka_consumer_group = str(uuid4())
+            self.log_level = "DEBUG"
 
 
 # endregion
@@ -53,6 +58,7 @@ def reducer_func(agg, msg):
             "high": max(agg["humidity"]["high"], humidity),
             "low": min(agg["humidity"]["low"], humidity),
         },
+        "count": agg["count"] + 1,
     }
 
 
@@ -77,6 +83,7 @@ def initializer_func(msg):
             "high": humidity,
             "low": humidity,
         },
+        "count": 1,
     }
 
 
