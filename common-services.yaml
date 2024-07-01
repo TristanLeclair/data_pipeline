@@ -1,0 +1,10 @@
+services:
+  kafka_dependers:
+    networks:
+      - kafka-net
+    depends_on:
+      kafka:
+        condition: service_healthy
+  transformer:
+    extends: kafka_dependers
+    profiles: [transformers]

@@ -21,6 +21,11 @@ services:
       - "kafka-volume:/bitnami"
     networks:
       - kafka-net
+    healthcheck:
+      test: kafka-topics.sh --list --bootstrap-server localhost:9092 || exit 1
+      interval: 1s
+      timeout: 60s
+      retries: 60
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -35,16 +40,33 @@ services:
 
   python_producer:
     build: ./producer/
-    depends_on:
-      - kafka
+    extends:
+      file: ./common-services.yaml
+      service: kafka_dependers
     container_name: producer
-    networks:
-      - kafka-net
     develop:
       watch:
         - path: ./producer/
           action: sync
           target: /app
+
+  transformer_average:
+    build: ./transformer_average/
+    extends:
+      file: ./common-services.yaml
+      service: transformer
+
+  transformer_high_low:
+    build: ./transformer_high_low/
+    extends:
+      file: ./common-services.yaml
+      service: transformer
+
+  transformer_i18n:
+    build: ./transformer_i18n/
+    extends:
+      file: ./common-services.yaml
+      service: transformer
 
 volumes:
   kafka-volume:
