@@ -1,5 +1,6 @@
 from datetime import timedelta
 import logging
+from typing import Tuple
 from uuid import uuid4
 
 from quixstreams import Application
@@ -24,10 +25,15 @@ class Parser(Tap):
 # endregion
 
 
+def extract_values(msg) -> Tuple[float, float, float]:
+    temperature = float(msg["current"]["temperature_2m"])
+    wind_speed = float(msg["current"]["wind_speed_10m"])
+    humidity = float(msg["current"]["relative_humidity_2m"])
+    return temperature, wind_speed, humidity
+
+
 def reducer_func(agg, msg):
-    temperature = msg["current"]["temperature_2m"]
-    wind_speed = msg["current"]["wind_speed_10m"]
-    humidity = msg["current"]["relative_humidity_2m"]
+    temperature, wind_speed, humidity = extract_values(msg)
     return {
         "temperature": {
             "open": agg["temperature"]["open"],
@@ -51,9 +57,7 @@ def reducer_func(agg, msg):
 
 
 def initializer_func(msg):
-    temperature = msg["current"]["temperature_2m"]
-    wind_speed = msg["current"]["wind_speed_10m"]
-    humidity = msg["current"]["relative_humidity_2m"]
+    temperature, wind_speed, humidity = extract_values(msg)
     return {
         "temperature": {
             "open": temperature,
